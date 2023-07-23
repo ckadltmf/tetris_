@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tetris Web Game</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tetris Web Game</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+    }
+
+    .game-container {
+      border: 2px solid #000;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      display: inline-block;
+      padding: 10px; /* Add padding to the game container */
+    }
+
+    canvas {
+      display: block;
+      margin: 0 auto; /* Center the canvas horizontally */
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <canvas id="tetrisCanvas" width="300" height="600"></canvas>
+    <button onclick="startGame()">Start Game</button>
+    <button onclick="pauseGame()">Pause Game</button>
+  </div>
+  <script>
+    const canvas = document.getElementById("tetrisCanvas");
+    const ctx = canvas.getContext("2d");
+    const rows = 20;
+    const columns = 10;
+    const blockSize = 30;
+    const boardColor = "#dcdcdc";
+    let board = [];
+    let currentTetromino = null;
+    let intervalId = null;
+    let moveDownInterval = null;
+
+    // Tetrominoes (array of block coordinates for each shape)
+    const tetrominoes = [
+      [[1, 1, 1, 1]], // I
+      [[1, 1, 1], [0, 1]], // L
+      [[1, 1, 1], [1, 0]], // J
+      [[1, 1, 1], [0, 0, 1]], // T
+      [[1, 1], [1, 1]], // O
+      [[1, 1], [0, 1, 1]] // Z
+    ];
+
+    // Initialize the board with empty cells
+    function createBoard() {
+      for (let row = 0; row < rows; row++) {
+        board.push(Array(columns).fill(null));
+      }
+    }
+
+    // Draw a colored square on the canvas
+    function drawSquare(x, y, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x * blockSize, y * blockSize, blockSize, blockSize);
+      ctx.strokeStyle = "#000";
+      ctx.strokeRect(x * blockSize, y * blockSize, blockSize, blockSize);
+    }
+
+    // Draw the entire board
+    function drawBoard() {
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < columns; col++) {
+          const color = board[row][col] || boardColor;
+          drawSquare(col, row, color);
+        }
+      }
+    }
+
+    // Draw the current tetromino
+    function drawTetromino() {
+      if (currentTetromino) {
+        const { shape, x, y, color } = currentTetromino;
+        shape.forEach((row, i) => {
+          row.forEach((value, j) => {
+            if (value) {
+              drawSquare(x + j, y + i, color);
+            }
+          });
+        });
+      }
+    }
+
+    // Move the current tetromino down
+    function moveDown() {
+      if (currentTetromino) {
+        currentTetromino.y++;
+        if (checkCollision()) {
+          currentTetromino.y--; // Move back up if there's a collision
+          placeTetromino(); // Place the tetromino on the board
+          spawnTetromino(); // Spawn a new tetromino
+        }
+      }
+    }
+
+    // Move the current tetromino left
+    function moveLeft() {
+      if (currentTetromino) {
+        currentTetromino.x--;
+        if (checkCollision()) {
+          currentTetromino.x++; // Move back to the right if there's a collision
+        }
+      }
+    }
+
+    // Move the current tetromino right
+    function moveRight() {
+      if (currentTetromino) {
+        currentTetromino.x++;
+        if (checkCollision()) {
+          currentTetromino.x--; // Move back to the left if there's a collision
+        }
+      }
+    }
+
+    // Place the current tetromino on the board
+    function placeTetromino() {
+      const { shape, x, y, color } = currentTetromino;
+      shape.forEach((row, i) => {
+        row.forEach((value, j) => {
+          if (value) {
+            board[y + i][x + j] = color;
+          }
+        });
+      });
+    }
+
+    // Check for collisions with the board and other blocks
+    function checkCollision() {
+      const { shape, x, y } = currentTetromino;
+      for (let i = 0; i < shape.length; i++) {
+        for (let j = 0; j < shape[i].length; j++) {
+          if (shape[i][j] && (board[y + i] && board[y + i][x + j]) !== null) {
+            return true; // Collision detected
+          }
+        }
+      }
+      return false; // No collision
+    }
+
+    // Spawn a new tetromino
+    function spawnTetromino() {
+      currentTetromino = {
+        shape: tetrominoes[Math.floor(Math.random() * tetrominoes.length)],
+        x: 4,
+        y: 0,
+        color: getRandomColor()
+      };
+    }
+
+    // Start moving the tetromino down continuously
+    function startMovingDown() {
+      moveDownInterval = setInterval(moveDown, 500); // Move down every 500 milliseconds (adjust this for game speed)
+    }
+
+    // Stop moving the tetromino down
+    function stopMovingDown() {
+      clearInterval(moveDownInterval);
+    }
+
+    // Function to handle user input for left and right movement
+    function handleUserInput(event) {
+      if (currentTetromino) {
+        switch (event.key) {
+          case "ArrowLeft":
+            moveLeft();
+            break;
+          case "ArrowRight":
+            moveRight();
+            break;
+          // You can add more cases to handle other keys
+        }
+      }
+    }
+
+    // Add event listeners for user input
+    document.addEventListener("keydown", handleUserInput);
+    document.addEventListener("keyup", function (event) {
+      // Stop moving down when user releases the down arrow key
+      if (event.key === "ArrowDown") {
+        stopMovingDown();
+      }
+    });
+
+    // Generate a random color
+    function getRandomColor() {
+      const letters = "0123456789ABCDEF";
+      let color = "#";
+      for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+      }
+      return color;
+    }
+
+    // Game loop
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBoard();
+      drawTetromino();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Start the game
+    function startGame() {
+      // Initialize the game state
+      board = [];
+      createBoard();
+      spawnTetromino();
+      // Start moving the tetromino down
+      startMovingDown();
+      // Start the game loop
+      intervalId = setInterval(gameLoop, 16); // 60 FPS (adjust this for smoother or faster movement)
+    }
+
+    // Pause the game
+    function pauseGame() {
+      clearInterval(intervalId);
+      intervalId = null;
+      stopMovingDown();
+    }
+
+    
+  </script>
+</body>
+</html>
